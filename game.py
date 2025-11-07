@@ -4,9 +4,7 @@ import game_env
 import game_string
 import json
 import os
-
-#lorem ipsum new text qwerty
-
+#test
 player1 = {
 
     'Ability' : {
