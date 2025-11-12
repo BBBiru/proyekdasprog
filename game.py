@@ -317,6 +317,7 @@ main()
 #TO-DO:
 # Spell Action
 # Win condition
+# test for pull
 
 #okeoke
 #bagian spell nya belom gw koding jadi error
