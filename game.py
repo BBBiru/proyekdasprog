@@ -40,7 +40,7 @@ help_command = game_string.help_command
 #------------------------Save and load functions----------------------
 def save(state):
     with open("current_progress.json", "w") as file:
-        save_state = json.dumps(state)
+        save_state = json.dumps(state, indent=4)
         file.write(save_state)
 
 def load():
