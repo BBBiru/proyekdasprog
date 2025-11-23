@@ -65,15 +65,20 @@ def armor_modifier(): #ini modifier stats buat awal game. belom jadi
         + player1['Ability']['Dexterity']\
         + game_env.armor[player1['Equipment']['Armor']]
 
+def damage_modifier():
+    global d_weapon_damage
+    d_weapon_damage = game_env.weapon[player1['Equipment']['Weapon']]
+
 #------------------------Spawn functions----------------------
 
 def spawn_enemy(): #ini tadi buat ngasih stats ke musuh
-    name = random.choice(game_env.enemy_all)
+    current_biome = player1['Status']['Biome']
+    name = random.choice(list(game_env.enemy[current_biome]))
     enemy['Name'] = name
-    enemy['Health'] = game_env.enemy[name][0]
-    enemy['DMG'] = game_env.enemy[name][1]
-    enemy['SPD'] = game_env.enemy[name][2]
-    enemy['Effect'] = 'None'
+    enemy['Health'] = game_env.enemy[current_biome][name][0]
+    enemy['DMG'] = game_env.enemy[current_biome][name][1]
+    enemy['DEX'] = game_env.enemy[current_biome][name][2]
+    enemy['Effect'] = []
 
 def spawn_fruit(): 
     fruit = random.choice(game_env.buah)
@@ -81,17 +86,16 @@ def spawn_fruit():
     print(f'Kamu menemukan buah: {fruit}!')
     delay(1)
     print(f'Jumlah buah sekarang: {player1["Buah"]["Total Buah"]}')
-    return True
 
 def spawn_weapon():
-    armor = random.choice(game_env.armor_all)
-    print(f'Kamu menemukan armor: {armor}. Saat ini kamu memakai: {player1["Equipment"]["Armor"]}')
+    weapon = random.choice(game_env.weapon_all)
+    print(f'Kamu menemukan weapon: {weapon}. Saat ini kamu memakai: {player1["Equipment"]["Weapon"]}')
     delay(1)
-    ans = input('Apakah ingin mengganti armor dengan yang ditemukan? (y/n) ').strip().lower()
+    ans = input('Apakah ingin mengganti senjata dengan yang ditemukan? (y/n) ').strip().lower()
     if ans and ans[0] == 'y':
-        player1['Equipment']['Armor'] = armor
-        print(f'Armor diganti menjadi {armor}.')
-    return True
+        player1['Equipment']['Weapon'] = weapon
+        print(f'Weapon diganti menjadi {weapon}.')
+        damage_modifier()
 
 def spawn_armor():
     armor = random.choice(game_env.armor_all)
@@ -102,14 +106,12 @@ def spawn_armor():
         player1['Equipment']['Armor'] = armor
         print(f'Armor diganti menjadi {armor}.')
         armor_modifier()
-    return True
 
 def spawn_scroll():
     spell = random.choice(game_env.spell_all)
     print(f'Kamu menemukan spell scroll: {spell}. Kamu bisa cast spell ini saat pertarunganmu nanti.')
     delay(1)
     player1['Spell'][spell] = game_env.spell[spell]
-    return True
 
 def spawn_potion(potion):
     match potion:
@@ -117,29 +119,27 @@ def spawn_potion(potion):
             player1['Status']['Mana'] += 4
             print('Kamu menemukan sebuah mana potion. +4 Mana.')
             delay(1)
-            return True
         case 'health':
             # simple health potion
             player1['Status']['Health'] += 10
             print('Kamu menemukan sebuah health potion. +10 Health.')
             delay(1)
-            return True
 
 def spawn_loot(): #ini buat spawn loot random. palingan nanti tiap loot bakal dibikin fungsi baru lagi aja
     d_100 = random.randint(1, 100)
     # 30% fruit, 10% weapon, 10% armor, 10% spell scroll, 20% mana potion, 20% health potion
     if d_100 > 70:
-        return spawn_fruit()
+        spawn_fruit()
     elif d_100 >= 60:
-        return spawn_weapon()
+        spawn_weapon()
     elif d_100 >= 50:
-        return spawn_armor()
+        spawn_armor()
     elif d_100 >= 40:
-        return spawn_scroll()
+        spawn_scroll()
     elif d_100 >= 20:
-        return spawn_potion('mana')
+        spawn_potion('mana')
     else:
-        return spawn_potion('health')
+        spawn_potion('health')
         
 
 #------------------------Handler functions----------------------
@@ -151,6 +151,14 @@ def death_handler(): #ini kalau player mati
         delay(1)
         return 1
 
+def biome_handler():
+    biome = random.choice(game_env.biome)
+    player1['Status']['Biome'] = biome
+    print(game_string.biome['Arrived'][biome])
+    delay(1)
+    print(f'----------Kamu sampai di {biome}----------')
+    delay(1)
+
 def jalan_handler(): #ini kalau player input jalan. niatnya setelah beberapa ratus/ribu meter nanti ganti
     #environment yang dimana musuh sama kondisinya ada yang beda
     if player1['Status']['In Combat'] == True:
@@ -160,6 +168,8 @@ def jalan_handler(): #ini kalau player input jalan. niatnya setelah beberapa rat
     player1['Status']['Position'] += 75
     print('Kamu berjalan sejauh 75 meter.')
     print('Jarak dari rumahmu sekarang adalah', player1['Status']['Position'], 'meter.')
+    if player1['Status']['Position'] % 150 == 0: #____________________________________MODULUSNYA NANTI GANTI PAS FINAL PRODUCT, 150 BUAT TESTING DOANG
+        biome_handler()
     d_10 = dice(10)
     if d_10 < 4:
         result = combat_handler()
@@ -167,7 +177,7 @@ def jalan_handler(): #ini kalau player input jalan. niatnya setelah beberapa rat
             return 1
     if d_10 > 4:
         spawn_loot()
-        
+
 
 def exit_handler(): #buat keluar dari game
     print('Terimakasih telah bermain!')
@@ -210,19 +220,23 @@ def serang_handler(): #ini kalau player nyerang
 
 def spell_handler(spell): #ini belom jadi. niatnya buat spell tadi.
     #jadi disini, spell bakalan ngasih efek berbeda tiap jenisnya
+    spell = spell.lower()
     spell = spell.capitalize()
     if spell not in player1['Spell']:
         print('Spell tidak diketahui.')
         return 0
+    if player1['Status']['Mana'] < player1['Spell'][spell][0]:
+        print('Spell kekurangan mana.')
+        return 0
     player1['Status']['Mana'] -= player1['Spell'][spell][0]
     print(f'Kamu menggunakan spell {spell} dan menghabiskan {player1["Spell"][spell][0]} mana.')
-    d_hit = dice(20)
+    d_hit = dice(20) + player1['Ability']['Wisdom']
     if d_hit > 9:
         print('Hit!')
         print(f"Musuh terkena {player1["Spell"][spell][1]} damage.")
         damage = player1['Spell'][spell][1]
         enemy['Health'] -= damage
-        enemy['Effect'] = player1['Spell'][spell][2] #efek spell, kayaknya bakal gw ubah lagi nanti
+        enemy['Effect'].append(player1['Spell'][spell][2]) #efek spell, kayaknya bakal gw ubah lagi nanti
         return 1
     else:
         print('Tidak hit!')
@@ -230,7 +244,7 @@ def spell_handler(spell): #ini belom jadi. niatnya buat spell tadi.
 
 def kabur_handler(): #ini buat player kabur pas combat
     d_kabur = dice(20)
-    if d_kabur + player1['Ability']['Dexterity'] > 12 + enemy['SPD']:
+    if d_kabur + player1['Ability']['Dexterity'] > 12 + enemy['DEX']:
         print('Kamu berhasil kabur dari musuh')
         set_in_combat(False)
         print('Masukan perintah cek, jalan, help, atau exit.')
@@ -240,6 +254,9 @@ def kabur_handler(): #ini buat player kabur pas combat
         return 1
 
 def enemy_handler(): #ini buat ngejalanin musuh. jadi musuh nyerang sama mati ada disini. ini dipanggil pas combat
+    if enemy['Effect'] == 'Fire' and player1['Status']['Biome'] != 'Tundra':
+        enemy['Health'] -= 2
+        print("Musuh terkena 2 damage dari efek Fire")
     if enemy['Health'] <= 0:
         print(f'Kamu mengalahkan {enemy["Name"]}!')
         delay(1)
@@ -249,12 +266,9 @@ def enemy_handler(): #ini buat ngejalanin musuh. jadi musuh nyerang sama mati ad
         enemy.clear()
         print('Masukan perintah cek, jalan, help, atau exit.')
         return
-    if enemy['Effect'] == 'Fire' and player1['Status']['Biome'] != 'Tundra':
-        enemy['Health'] -= 2
-        print("Musuh terkena 2 damage dari efek Fire")
     d_20 = dice(20)
     if enemy['Effect'] == 'Fog':
-        print('Kabut mengelilingi musuh, pandangan musuh kabur')
+        print('Kabutmu mengelilingi musuh. pandangannya menjadi kabur')
         d_20 -= 2
     if enemy['Effect'] == 'Blind':
         print('Musuh tidak bisa melihat')
@@ -366,10 +380,5 @@ main()
 #TO-DO:
 # Spell Action
 # Win condition
-# test lagi
-# test lagi lagi
-
-#okeoke
-#bagian spell nya belom gw koding jadi error
 
 
